@@ -76,6 +76,7 @@ function LyricLine({ line, index, isActive, isPast, dist, activeLineRef, onSeek 
     <div
       ref={isActive ? activeLineRef : null}
       className={cls}
+      data-dist={dist}
       onClick={() => onSeek(line.time)}
     >
       <span className="lp__line-text">{line.text}</span>
