@@ -127,6 +127,28 @@ class ApiClient {
     if (playlistId) formData.append('playlistId', playlistId);
     return fetch(`${this.baseUrl}/upload/music`, { method: 'POST', body: formData }).then(res => res.json());
   }
+
+  // === 自定义音源管理 ===
+  getSources() { return this.request('/sources'); }
+  getSourceDetail(id) { return this.request(`/sources/${id}`); }
+  addSource(data) {
+    return this.request('/sources', { method: 'POST', body: JSON.stringify(data) });
+  }
+  deleteSource(id) {
+    return this.request(`/sources/${id}`, { method: 'DELETE' });
+  }
+  toggleSource(id, enabled) {
+    return this.request(`/sources/${id}/toggle`, { method: 'PUT', body: JSON.stringify({ enabled }) });
+  }
+  refreshSource(id) {
+    return this.request(`/sources/${id}/refresh`, { method: 'POST' });
+  }
+  testSource(id) {
+    return this.request(`/sources/${id}/test`, { method: 'POST' });
+  }
+  testSourceUrl(url) {
+    return this.request('/sources/test-url', { method: 'POST', body: JSON.stringify({ url }) });
+  }
 }
 
 export const api = new ApiClient();

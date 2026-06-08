@@ -1,4 +1,5 @@
 const xinghai = require('../services/xinghaiSource');
+const sourceManager = require('../services/sourceManager');
 
 const router = require('express').Router();
 
@@ -8,10 +9,31 @@ const router = require('express').Router();
  * Body: { source, songId, songName, songIndex, quality, origin, singer }
  */
 router.post('/url', async (req, res) => {
-  const { source, songId, songName, songIndex, quality, origin, singer } = req.body;
+  const { source, songId, songName, songIndex, quality, origin, singer, _customSourceId } = req.body;
 
   if (!source || !songId) {
     return res.status(400).json({ error: '缺少必要参数: source, songId' });
+  }
+
+  // 自定义音源路径
+  if (_customSourceId) {
+    try {
+      const musicInfo = { songmid: songId, name: songName, singer, id: songId };
+      const result = await sourceManager.getMusicUrlFromCustom(
+        _customSourceId, source, musicInfo, quality || '320k'
+      );
+      return res.json({
+        success: true,
+        url: result.url,
+        method: 'custom',
+        quality: result.quality || quality,
+        platform: source,
+        matchedSong: { name: songName, singer },
+      });
+    } catch (err) {
+      console.error('[Stream URL Custom] 获取失败:', err.message);
+      return res.status(502).json({ error: err.message, source, songId });
+    }
   }
 
   try {
@@ -82,10 +104,23 @@ router.get('/url', async (req, res) => {
  * GET /api/stream/lyric?source=wy&lyricId=123&songName=歌曲名
  */
 router.get('/lyric', async (req, res) => {
-  const { source, lyricId, songName, singer } = req.query;
+  const { source, lyricId, songName, singer, _customSourceId } = req.query;
   if (!source || (!lyricId && !songName)) {
     return res.status(400).json({ error: '需要 source 和 lyricId/songName 参数' });
   }
+
+  // 自定义音源歌词
+  if (_customSourceId) {
+    try {
+      const musicInfo = { songmid: lyricId || '', name: songName, singer, id: lyricId || '' };
+      const result = await sourceManager.getLyricFromCustom(_customSourceId, source, musicInfo);
+      return res.json(result);
+    } catch (err) {
+      console.error('[Lyric Custom] 获取失败:', err.message);
+      return res.status(404).json({ error: err.message });
+    }
+  }
+
   try {
     const result = await xinghai.getLyric(source, lyricId || '', songName || '', singer || '');
     res.json(result);

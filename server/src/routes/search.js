@@ -1,5 +1,6 @@
 const qqMusic = require('../services/qqMusic');
 const xinghai = require('../services/xinghaiSource');
+const sourceManager = require('../services/sourceManager');
 const { getDb } = require('../db');
 
 const router = require('express').Router();
@@ -59,6 +60,30 @@ router.get('/', async (req, res) => {
     result.qq_music = qqResults.songs;
   } catch {
     result.qq_music = [];
+  }
+
+  // 5. 自定义音源搜索
+  try {
+    const customResults = await sourceManager.searchCustomSources(q, parseInt(limit) || 15);
+    if (Object.keys(customResults).length > 0) {
+      result.custom_sources = customResults;
+      // 合并到 platforms_list
+      for (const [key, songs] of Object.entries(customResults)) {
+        if (songs.length > 0) {
+          const sourceName = songs[0]._customSourceName || key;
+          result.platforms_list.push({
+            code: key,
+            name: `${sourceName}`,
+            count: songs.length,
+            songs,
+          });
+        }
+      }
+      // 重新排序
+      result.platforms_list.sort((a, b) => b.count - a.count);
+    }
+  } catch (err) {
+    console.error('自定义源搜索异常:', err.message);
   }
 
   res.json(result);

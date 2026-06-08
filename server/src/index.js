@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const { getDb } = require('./db');
 const xinghai = require('./services/xinghaiSource');
+const sourceManager = require('./services/sourceManager');
 
 // Ensure directories exist
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -44,6 +45,7 @@ app.use('/api/import', require('./routes/import'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/stream', require('./routes/stream'));
+app.use('/api/sources', require('./routes/sources'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -90,5 +92,13 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log('[Aqua] 星海音乐源就绪');
   } catch (err) {
     console.error('[Aqua] 星海音乐源初始化异常:', err.message);
+  }
+
+  // 异步加载自定义音源
+  try {
+    const loaded = await sourceManager.loadAllEnabledSources();
+    console.log(`[Aqua] 自定义音源已加载: ${loaded.length} 个`);
+  } catch (err) {
+    console.error('[Aqua] 自定义音源加载异常:', err.message);
   }
 });

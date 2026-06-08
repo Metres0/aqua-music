@@ -63,10 +63,26 @@ function initTables() {
       cached_at INTEGER DEFAULT (strftime('%s','now'))
     );
 
+    CREATE TABLE IF NOT EXISTS custom_sources (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      version TEXT DEFAULT '1.0.0',
+      author TEXT DEFAULT '',
+      homepage TEXT DEFAULT '',
+      url TEXT DEFAULT '',
+      script TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      sources_meta TEXT DEFAULT '[]',
+      created_at INTEGER DEFAULT (strftime('%s','now')),
+      updated_at INTEGER DEFAULT (strftime('%s','now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
     CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
     CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id);
     CREATE INDEX IF NOT EXISTS idx_playlist_songs_song ON playlist_songs(song_id);
+    CREATE INDEX IF NOT EXISTS idx_custom_sources_enabled ON custom_sources(enabled);
   `);
 
   // Create default playlist if none exist

@@ -7,6 +7,7 @@ import Player from './components/Player';
 import LyricsPage from './components/LyricsPage';
 import ImportModal from './components/ImportModal';
 import SearchModal from './components/SearchModal';
+import SourceManager from './components/SourceManager';
 import { usePlayerStore } from './store/playerStore';
 import { useLibraryStore } from './store/libraryStore';
 import { api } from './utils/api';
@@ -34,7 +35,7 @@ function App() {
     onSongEnd,
   } = usePlayerStore();
 
-  const { showImportModal, showSearchModal, fetchPlaylists } = useLibraryStore();
+  const { showImportModal, showSearchModal, showSourceManager, fetchPlaylists } = useLibraryStore();
 
   // Initialize audio element
   useEffect(() => {
@@ -133,28 +134,33 @@ function App() {
     fetchPlaylists();
   }, []);
 
+  const isLyricsPage = showLyricsPage && currentSong;
+
   return (
     <div className="app">
       <SvgFilters />
       <div className="app-background">
         <div className="app-background__gradient" />
       </div>
-      {showLyricsPage && currentSong ? (
+      {isLyricsPage ? (
         <LyricsPage onClose={() => setShowLyricsPage(false)} />
       ) : (
-        <div className="app-layout">
-          <Sidebar />
-          <MainContent />
-        </div>
+        <>
+          <div className="app-layout">
+            <Sidebar />
+            <MainContent />
+          </div>
+          <Player
+            onSeek={handleSeek}
+            isResolving={false}
+            onToggleLyrics={() => setShowLyricsPage(v => !v)}
+            showLyricsPage={false}
+          />
+        </>
       )}
-      <Player
-        onSeek={handleSeek}
-        isResolving={false}
-        onToggleLyrics={() => setShowLyricsPage(v => !v)}
-        showLyricsPage={showLyricsPage}
-      />
       {showImportModal && <ImportModal />}
       {showSearchModal && <SearchModal />}
+      {showSourceManager && <SourceManager onClose={() => useLibraryStore.getState().toggleSourceManager()} />}
     </div>
   );
 }

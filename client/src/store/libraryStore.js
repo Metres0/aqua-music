@@ -12,7 +12,8 @@ export const useLibraryStore = create((set, get) => ({
   showImportModal: false,
   showSearchModal: false,
   showUploadModal: false,
-  sidebarActive: 'library', // 'library' | 'playlist'
+  showSourceManager: false,
+  sidebarActive: 'library', // 'library' | 'playlist' | 'home'
 
   // Fetch all playlists
   fetchPlaylists: async () => {
@@ -117,6 +118,7 @@ export const useLibraryStore = create((set, get) => ({
   toggleImportModal: () => set(s => ({ showImportModal: !s.showImportModal })),
   toggleSearchModal: () => set(s => ({ showSearchModal: !s.showSearchModal })),
   toggleUploadModal: () => set(s => ({ showUploadModal: !s.showUploadModal })),
+  toggleSourceManager: () => set(s => ({ showSourceManager: !s.showSourceManager })),
   setSidebarActive: (active) => set({ sidebarActive: active }),
   clearError: () => set({ error: null }),
 

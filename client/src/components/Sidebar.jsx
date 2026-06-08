@@ -33,6 +33,13 @@ const icons = {
       <line x1="12" y1="3" x2="12" y2="15" />
     </svg>
   ),
+  source: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
   music: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 18V5l12-2v13" />
@@ -51,6 +58,7 @@ export default function Sidebar() {
     toggleImportModal,
     toggleSearchModal,
     toggleUploadModal,
+    toggleSourceManager,
     setSidebarActive,
     sidebarActive,
   } = useLibraryStore();
@@ -106,6 +114,10 @@ export default function Sidebar() {
         <button className="sidebar__nav-item" onClick={toggleUploadModal}>
           <span className="sidebar__nav-icon">{icons.upload}</span>
           <span>上传本地音乐</span>
+        </button>
+        <button className="sidebar__nav-item" onClick={toggleSourceManager}>
+          <span className="sidebar__nav-icon">{icons.source}</span>
+          <span>源管理</span>
         </button>
       </div>
 
