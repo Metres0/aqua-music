@@ -77,6 +77,7 @@ class ApiClient {
         quality: '320k',
         origin: song._origin || 'yaohu',
         singer: song.singer || '',
+        _customSourceId: song._customSourceId || '',
       }),
     });
   }
@@ -92,6 +93,7 @@ class ApiClient {
       origin: song._origin || 'yaohu',
       singer: song.singer || '',
     });
+    if (song._customSourceId) params.set('_customSourceId', song._customSourceId);
     return `${this.baseUrl}/stream/url?${params.toString()}`;
   }
 
@@ -113,10 +115,11 @@ class ApiClient {
   }
 
   // === Lyrics ===
-  getLyric(source, lyricId, songName = '', singer = '') {
+  getLyric(source, lyricId, songName = '', singer = '', customSourceId = '') {
     const params = new URLSearchParams({ source, lyricId: lyricId || '' });
     if (songName) params.set('songName', songName);
     if (singer) params.set('singer', singer);
+    if (customSourceId) params.set('_customSourceId', customSourceId);
     return this.request(`/stream/lyric?${params.toString()}`);
   }
 

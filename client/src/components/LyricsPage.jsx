@@ -48,6 +48,43 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// ─── Lyric Line (QQ炫舞 style two-phase animation) ───
+function LyricLine({ line, index, isActive, isPast, dist, activeLineRef, onSeek }) {
+  const [settled, setSettled] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (isActive) {
+      setSettled(false);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setSettled(true), 650);
+    } else {
+      setSettled(false);
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [isActive]);
+
+  const cls = [
+    'lp__line',
+    isActive ? 'lp__line--active' : '',
+    isActive && settled ? 'lp__line--pulse' : '',
+    isPast ? 'lp__line--past' : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div
+      ref={isActive ? activeLineRef : null}
+      className={cls}
+      onClick={() => onSeek(line.time)}
+    >
+      <span className="lp__line-text">{line.text}</span>
+      {line.translation && <span className="lp__line-trans">{line.translation}</span>}
+      {isActive && <div className="lp__line-glow" />}
+    </div>
+  );
+}
+
 // ─── LyricsPage Component ───
 export default function LyricsPage({ onClose }) {
   const { currentSong, currentTime, duration, isPlaying, togglePlay, nextSong, prevSong } = usePlayerStore();
@@ -73,8 +110,9 @@ export default function LyricsPage({ onClose }) {
     const lyricId = currentSong._lyricId || currentSong.songmid || currentSong.id || '';
     const songName = currentSong.title || '';
     const singer = currentSong.singer || currentSong.artist || '';
+    const customSourceId = currentSong._customSourceId || '';
 
-    api.getLyric(source, lyricId, songName, singer)
+    api.getLyric(source, lyricId, songName, singer, customSourceId)
       .then(data => setLyricData(mergeLyrics(data.lyric, data.tlyric)))
       .catch(err => setError(err.message || '歌词获取失败'))
       .finally(() => setLoading(false));
@@ -89,7 +127,7 @@ export default function LyricsPage({ onClose }) {
       else break;
     }
     return idx;
-  }, [lyricData, Math.floor(currentTime)]);
+  }, [lyricData, currentTime]);
 
   // Auto-scroll
   useEffect(() => {
@@ -204,30 +242,18 @@ export default function LyricsPage({ onClose }) {
               <div className="lp__lyrics-list">
                 {/* Top spacer */}
                 <div style={{ height: '38vh' }} />
-                {lyricData.map((line, index) => {
-                  const dist = index - activeIndex;
-                  return (
-                    <div
-                      key={index}
-                      ref={index === activeIndex ? activeLineRef : null}
-                      className={[
-                        'lp__line',
-                        index === activeIndex ? 'lp__line--active' : '',
-                        index < activeIndex ? 'lp__line--past' : '',
-                        Math.abs(dist) === 1 ? 'lp__line--near' : '',
-                        Math.abs(dist) === 2 ? 'lp__line--far' : '',
-                      ].filter(Boolean).join(' ')}
-                      data-dist={dist}
-                      onClick={() => handleLineClick(line.time)}
-                    >
-                      <span className="lp__line-text">{line.text}</span>
-                      {line.translation && (
-                        <span className="lp__line-trans">{line.translation}</span>
-                      )}
-                      {index === activeIndex && <div className="lp__line-glow" />}
-                    </div>
-                  );
-                })}
+                {lyricData.map((line, index) => (
+                  <LyricLine
+                    key={index}
+                    line={line}
+                    index={index}
+                    isActive={index === activeIndex}
+                    isPast={index < activeIndex}
+                    dist={index - activeIndex}
+                    activeLineRef={activeLineRef}
+                    onSeek={handleLineClick}
+                  />
+                ))}
                 {/* Bottom spacer */}
                 <div style={{ height: '42vh' }} />
               </div>
