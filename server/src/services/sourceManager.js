@@ -82,9 +82,63 @@ function parseScriptHeader(script) {
 }
 
 // ============================ HTTP 工具 ============================
+
+// 将 raw.githubusercontent.com URL 转换为 GitHub API URL
+// 格式1: raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+// 格式2: raw.githubusercontent.com/{owner}/{repo}/refs/heads/{branch}/{path}
+function toGitHubApiUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.hostname !== 'raw.githubusercontent.com') return null;
+    const parts = decodeURIComponent(url.pathname).split('/').filter(Boolean);
+    if (parts.length < 4) return null;
+    const owner = parts[0];
+    const repo = parts[1];
+
+    // 检测 refs/heads/{branch} 格式
+    let branch, filePath;
+    if (parts[2] === 'refs' && parts[3] === 'heads' && parts.length >= 6) {
+      branch = parts[4];
+      filePath = parts.slice(5).join('/');
+    } else {
+      branch = parts[2];
+      filePath = parts.slice(3).join('/');
+    }
+
+    return `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath).replace(/%2F/g, '/')}?ref=${branch}`;
+  } catch {
+    return null;
+  }
+}
+
 async function httpRequest(url, options = {}) {
+  const timeoutMs = options.timeout || 15000;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeout || 15000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  async function tryGitHubApiFallback() {
+    const ghApiUrl = toGitHubApiUrl(url);
+    if (ghApiUrl) {
+      console.log(`[SourceManager] raw URL 失败，尝试 GitHub API: ${ghApiUrl}`);
+      try {
+        const controller2 = new AbortController();
+        const timeout2 = setTimeout(() => controller2.abort(), timeoutMs);
+        const resp2 = await fetch(ghApiUrl, {
+          headers: { 'Accept': 'application/vnd.github.v3.raw', ...(options.headers || {}) },
+          signal: controller2.signal,
+        });
+        clearTimeout(timeout2);
+        if (resp2.status === 200) {
+          const text = await resp2.text();
+          return { statusCode: 200, body: text, headers: Object.fromEntries(resp2.headers.entries()) };
+        }
+      } catch (err2) {
+        console.error(`[SourceManager] GitHub API 也失败:`, err2.message);
+      }
+    }
+    return null;
+  }
+
   try {
     const resp = await fetch(url, {
       method: options.method || 'GET',
@@ -94,10 +148,20 @@ async function httpRequest(url, options = {}) {
       redirect: 'follow',
     });
     clearTimeout(timeout);
+
+    // 如果 raw URL 返回非 200，尝试 GitHub API 回退
+    if (resp.status !== 200 && toGitHubApiUrl(url)) {
+      const fallback = await tryGitHubApiFallback();
+      if (fallback) return fallback;
+    }
+
     const text = await resp.text();
     return { statusCode: resp.status, body: text, headers: Object.fromEntries(resp.headers.entries()) };
   } catch (err) {
     clearTimeout(timeout);
+    // 网络错误时也尝试 GitHub API 回退
+    const fallback = await tryGitHubApiFallback();
+    if (fallback) return fallback;
     throw err;
   }
 }
@@ -105,9 +169,11 @@ async function httpRequest(url, options = {}) {
 // ============================ VM 沙箱 ============================
 function createSourceSandbox(sourceId, scriptContent) {
   return new Promise((resolve, reject) => {
+    // 大脚本给更多时间
+    const sandboxTimeout = scriptContent.length > 100000 ? 30000 : 10000;
     const timeout = setTimeout(() => {
-      reject(new Error('音源脚本加载超时 (10s)'));
-    }, 10000);
+      reject(new Error(`音源脚本加载超时 (${sandboxTimeout / 1000}s)`));
+    }, sandboxTimeout);
 
     const handlers = {};
     let initedData = null;
@@ -278,20 +344,20 @@ function createSourceSandbox(sourceId, scriptContent) {
       const wrappedScript = `"use strict";\n${scriptContent}`;
       vm.runInContext(wrappedScript, context, {
         filename: `source-${sourceId}.js`,
-        timeout: 10000,
+        timeout: sandboxTimeout,
       });
     } catch (err) {
       clearTimeout(timeout);
       reject(new Error(`脚本执行错误: ${err.message}`));
     }
 
-    // 如果脚本是同步完成但没发 inited 事件，5秒后超时
+    // 如果脚本是同步完成但没发 inited 事件，等待后超时
     setTimeout(() => {
       clearTimeout(timeout);
       if (!initedData && !handlers['request']) {
         reject(new Error('脚本未发送 inited 事件，请检查脚本格式'));
       }
-    }, 5000);
+    }, sandboxTimeout);
   });
 }
 
@@ -358,7 +424,7 @@ async function loadAllEnabledSources() {
 
 // ============================ 对外接口 ============================
 async function addSourceFromUrl(url) {
-  const resp = await httpRequest(url, { timeout: 30000 });
+  const resp = await httpRequest(url, { timeout: 60000 });
   if (resp.statusCode !== 200) {
     throw new Error(`下载音源失败: HTTP ${resp.statusCode}`);
   }
@@ -368,7 +434,7 @@ async function addSourceFromUrl(url) {
   }
 
   const header = parseScriptHeader(script);
-  const name = header.name || url.split('/').pop().replace('.js', '') || 'Unknown Source';
+  const name = header.name || decodeURIComponent(url.split('/').pop().replace('.js', '')) || 'Unknown Source';
   const sourceData = {
     name,
     description: header.description || '',

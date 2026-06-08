@@ -204,23 +204,30 @@ export default function LyricsPage({ onClose }) {
               <div className="lp__lyrics-list">
                 {/* Top spacer */}
                 <div style={{ height: '38vh' }} />
-                {lyricData.map((line, index) => (
-                  <div
-                    key={index}
-                    ref={index === activeIndex ? activeLineRef : null}
-                    className={[
-                      'lp__line',
-                      index === activeIndex ? 'lp__line--active' : '',
-                      index < activeIndex ? 'lp__line--past' : '',
-                    ].filter(Boolean).join(' ')}
-                    onClick={() => handleLineClick(line.time)}
-                  >
-                    <span className="lp__line-text">{line.text}</span>
-                    {line.translation && (
-                      <span className="lp__line-trans">{line.translation}</span>
-                    )}
-                  </div>
-                ))}
+                {lyricData.map((line, index) => {
+                  const dist = index - activeIndex;
+                  return (
+                    <div
+                      key={index}
+                      ref={index === activeIndex ? activeLineRef : null}
+                      className={[
+                        'lp__line',
+                        index === activeIndex ? 'lp__line--active' : '',
+                        index < activeIndex ? 'lp__line--past' : '',
+                        Math.abs(dist) === 1 ? 'lp__line--near' : '',
+                        Math.abs(dist) === 2 ? 'lp__line--far' : '',
+                      ].filter(Boolean).join(' ')}
+                      data-dist={dist}
+                      onClick={() => handleLineClick(line.time)}
+                    >
+                      <span className="lp__line-text">{line.text}</span>
+                      {line.translation && (
+                        <span className="lp__line-trans">{line.translation}</span>
+                      )}
+                      {index === activeIndex && <div className="lp__line-glow" />}
+                    </div>
+                  );
+                })}
                 {/* Bottom spacer */}
                 <div style={{ height: '42vh' }} />
               </div>
